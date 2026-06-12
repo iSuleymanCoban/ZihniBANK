@@ -122,7 +122,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Veritabanı ve Hesaplamalar Sınıfı ---
-# Veritabanını önbelleklemiyoruz ki her thread (kullanıcı) kendi bağlantısını açsın
 def get_db():
     return Veritabani()
 
@@ -133,17 +132,38 @@ def get_hesaplamalar():
 try:
     db = get_db()
 except Exception as e:
-    st.error("Veritabanı bağlantısı sağlanamadı. Lütfen daha sonra tekrar deneyin.")
+    st.error(f"Veritabanı bağlantısı sağlanamadı. Hata: {str(e)}")
     st.stop()
     
 hesap = get_hesaplamalar()
 
-# --- Session State Başlatma (Güvenli Kontrol) ---
+# --- Session State Başlatma ---
 if "aktif_hesap" not in st.session_state:
     st.session_state["aktif_hesap"] = None
-
 if "page" not in st.session_state:
     st.session_state["page"] = "login"
+if "ui_msg" not in st.session_state:
+    st.session_state["ui_msg"] = None
+if "ui_msg_type" not in st.session_state:
+    st.session_state["ui_msg_type"] = None
+
+def show_msg(msg, msg_type="success"):
+    st.session_state["ui_msg"] = msg
+    st.session_state["ui_msg_type"] = msg_type
+
+def display_messages():
+    if st.session_state.get("ui_msg"):
+        msg = st.session_state["ui_msg"]
+        mtype = st.session_state["ui_msg_type"]
+        if mtype == "success":
+            st.success(msg)
+        elif mtype == "error":
+            st.error(msg)
+        elif mtype == "info":
+            st.info(msg)
+        # Mesajı gösterdikten sonra temizle
+        st.session_state["ui_msg"] = None
+        st.session_state["ui_msg_type"] = None
 
 def change_page(page_name):
     st.session_state["page"] = page_name
@@ -154,7 +174,7 @@ def logout():
 
 # --- Sayfa: GİRİŞ ---
 def login_page():
-    # Sayfayı yatayda ortalamak için boşluklu kolon yapısı kullanıyoruz
+    display_messages()
     _, col, _ = st.columns([1, 2, 1])
     
     with col:
@@ -170,19 +190,24 @@ def login_page():
                 if not hesap_no.strip() or not sifre.strip():
                     st.warning("Lütfen tüm alanları doldurun.")
                 else:
-                    user = db.userkontrol(hesap_no, sifre)
-                    if user:
-                        st.session_state["aktif_hesap"] = user[3] # 3. index hesap_no
-                        st.session_state["page"] = "dashboard"
-                        st.rerun()
-                    else:
-                        st.error("Hesap Numarası veya Şifre hatalı!")
+                    try:
+                        user = db.userkontrol(hesap_no, sifre)
+                        if user:
+                            st.session_state["aktif_hesap"] = user[3] # 3. index hesap_no
+                            st.session_state["page"] = "dashboard"
+                            show_msg("Giriş başarılı! Hoş geldiniz.", "success")
+                            st.rerun()
+                        else:
+                            st.error("Hesap Numarası veya Şifre hatalı!")
+                    except Exception as e:
+                        st.error(f"Veritabanı sorgusu başarısız: {str(e)}")
                         
         st.markdown("<br>", unsafe_allow_html=True)
         st.button("Hesabın yok mu? Yeni Kayıt Oluştur", on_click=change_page, args=("register",))
 
 # --- Sayfa: KAYIT ---
 def register_page():
+    display_messages()
     _, col, _ = st.columns([1, 2, 1])
     
     with col:
@@ -201,8 +226,9 @@ def register_page():
                 else:
                     try:
                         yeni_hesap_no = db.userekle(isim, soyisim, sifre)
-                        st.success(f"Kayıt Başarılı! Hesap Numaranız: **{yeni_hesap_no}**")
-                        st.info("Lütfen hesap numaranızı not alıp giriş sayfasına ilerleyin.")
+                        show_msg(f"Kayıt Başarılı! Hesap Numaranız: **{yeni_hesap_no}** Lütfen giriş sayfasına ilerleyin.", "success")
+                        st.session_state["page"] = "login"
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Kayıt sırasında beklenmedik bir hata oluştu: {str(e)}")
         
@@ -218,19 +244,23 @@ def dashboard_page():
         change_page("login")
         st.rerun()
         
-    user = db.hesapbul(aktif_hesap)
-    bakiye = db.paracekv(aktif_hesap)
+    try:
+        user = db.hesapbul(aktif_hesap)
+        bakiye = db.paracekv(aktif_hesap)
+    except Exception as e:
+        st.error(f"Veriler alınırken hata: {str(e)}")
+        st.stop()
     
     # Üst Bilgi (Header) Alanı
     header_col1, header_col2 = st.columns([3, 1])
     with header_col1:
         st.markdown(f"<h2>Hoş Geldiniz, <span style='color:#00d2ff'>{user[1]} {user[2]}</span></h2>", unsafe_allow_html=True)
     with header_col2:
-        # Çıkış butonunu sağa ve aşağıya hizalamak için küçük bir boşluk eklendi
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
         st.button("🚪 Çıkış Yap", on_click=logout, type="primary")
         
     st.divider()
+    display_messages()
         
     # Bakiye Gösterimi
     st.markdown("<p style='text-align: center; font-size: 1.4rem; margin-top: 1rem; color: #ccc;'>Güncel Bakiyeniz</p>", unsafe_allow_html=True)
@@ -252,10 +282,10 @@ def dashboard_page():
                         mevcut = db.paracekv(aktif_hesap)
                         db.moneyreset(aktif_hesap, mevcut + miktar_yatir)
                         db.logtut(aktif_hesap, "Para Yatırma", miktar_yatir)
-                        st.success(f"{miktar_yatir:,.2f} TL başarıyla yatırıldı!")
+                        show_msg(f"{miktar_yatir:,.2f} TL başarıyla yatırıldı!", "success")
                         st.rerun()
-                    except:
-                        st.error("İşlem sırasında bir hata oluştu.")
+                    except Exception as e:
+                        st.error(f"İşlem sırasında bir hata oluştu: {str(e)}")
 
     with tab2:
         st.markdown("### 📤 Hesabınızdan Para Çekin")
@@ -264,17 +294,17 @@ def dashboard_page():
             with st.form("withdraw_form", clear_on_submit=True):
                 miktar_cek = st.number_input("Çekilecek Miktar (TL)", min_value=1.0, step=50.0, format="%.2f")
                 if st.form_submit_button("Onayla ve Çek"):
-                    mevcut = db.paracekv(aktif_hesap)
-                    if hesap.para_kontrol(mevcut, miktar_cek):
-                        try:
+                    try:
+                        mevcut = db.paracekv(aktif_hesap)
+                        if hesap.para_kontrol(mevcut, miktar_cek):
                             db.moneyreset(aktif_hesap, mevcut - miktar_cek)
                             db.logtut(aktif_hesap, "Para Çekme", miktar_cek)
-                            st.success(f"{miktar_cek:,.2f} TL çekildi!")
+                            show_msg(f"{miktar_cek:,.2f} TL başarıyla çekildi!", "success")
                             st.rerun()
-                        except:
-                            st.error("Veritabanı hatası!")
-                    else:
-                        st.error("❌ Yetersiz bakiye! İşlem gerçekleştirilemedi.")
+                        else:
+                            st.error("❌ Yetersiz bakiye! İşlem gerçekleştirilemedi.")
+                    except Exception as e:
+                        st.error(f"Veritabanı hatası: {str(e)}")
 
     with tab3:
         st.markdown("### 🔄 Başka Bir Hesaba Para Transferi")
@@ -292,26 +322,26 @@ def dashboard_page():
                     elif hedef_hesap == aktif_hesap:
                         st.error("Kendi hesabınıza para gönderemezsiniz!")
                     else:
-                        alici = db.hesapbul(hedef_hesap)
-                        if not alici:
-                            st.error("Alıcı hesap numarası bulunamadı! Lütfen kontrol edin.")
-                        else:
-                            komisyon = hesap.komisyon(miktar_gonder)
-                            toplam_gerekli = miktar_gonder + komisyon
-                            mevcut = db.paracekv(aktif_hesap)
-                            
-                            if hesap.para_kontrol(mevcut, toplam_gerekli):
-                                try:
+                        try:
+                            alici = db.hesapbul(hedef_hesap)
+                            if not alici:
+                                st.error("Alıcı hesap numarası bulunamadı! Lütfen kontrol edin.")
+                            else:
+                                komisyon = hesap.komisyon(miktar_gonder)
+                                toplam_gerekli = miktar_gonder + komisyon
+                                mevcut = db.paracekv(aktif_hesap)
+                                
+                                if hesap.para_kontrol(mevcut, toplam_gerekli):
                                     db.moneyreset(aktif_hesap, mevcut - toplam_gerekli)
                                     db.moneyreset(hedef_hesap, db.paracekv(hedef_hesap) + miktar_gonder)
                                     db.logtut(aktif_hesap, f"Gönderilen Havale ({hedef_hesap})", miktar_gonder)
                                     db.logtut(hedef_hesap, f"Gelen Havale ({aktif_hesap})", miktar_gonder)
-                                    st.success(f"Transfer Başarılı! Kesilen komisyon: {komisyon:,.2f} TL")
+                                    show_msg(f"Transfer Başarılı! Kesilen komisyon: {komisyon:,.2f} TL", "success")
                                     st.rerun()
-                                except:
-                                    st.error("Transfer sırasında ağ/veritabanı hatası oluştu.")
-                            else:
-                                st.error(f"❌ Yetersiz bakiye! (Gönderim + Komisyon için gerekli tutar: {toplam_gerekli:,.2f} TL)")
+                                else:
+                                    st.error(f"❌ Yetersiz bakiye! (Gönderim + Komisyon için gerekli tutar: {toplam_gerekli:,.2f} TL)")
+                        except Exception as e:
+                            st.error(f"Transfer sırasında hata oluştu: {str(e)}")
 
     with tab4:
         st.markdown("### 📈 İhtiyaç Kredisi Hesaplama Modülü")
@@ -323,7 +353,6 @@ def dashboard_page():
                 
                 if st.form_submit_button("Hesapla"):
                     toplam_odeme, aylik_taksit = hesap.faizhesap(ana_para, vade)
-                    
                     st.markdown(f"""
                         <div style="background-color:rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-top:10px;">
                             <h4 style="color:#00d2ff; text-align:center; margin-bottom:15px;">Ödeme Planı Özeti</h4>
@@ -345,4 +374,4 @@ try:
     elif st.session_state["page"] == "dashboard":
         dashboard_page()
 except Exception as e:
-    st.error("Uygulama çalışırken beklenmedik bir hata oluştu. Lütfen sayfayı yenileyin.")
+    st.error(f"Uygulama çalışırken beklenmedik bir hata oluştu: {str(e)}")
