@@ -5,7 +5,6 @@ from hesaplamalar import Hesaplamalar
 # --- Sayfa Ayarları ---
 st.set_page_config(
     page_title="Modern Banka Uygulaması",
-    page_icon="🏦",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -161,7 +160,6 @@ def display_messages():
             st.error(msg)
         elif mtype == "info":
             st.info(msg)
-        # Mesajı gösterdikten sonra temizle
         st.session_state["ui_msg"] = None
         st.session_state["ui_msg_type"] = None
 
@@ -178,7 +176,7 @@ def login_page():
     _, col, _ = st.columns([1, 2, 1])
     
     with col:
-        st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>🏦 Banka Girişi</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Banka Girişi</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #aaa; margin-bottom: 2rem;'>Hesabınıza güvenle giriş yapın.</p>", unsafe_allow_html=True)
         
         with st.form("login_form"):
@@ -193,7 +191,7 @@ def login_page():
                     try:
                         user = db.userkontrol(hesap_no, sifre)
                         if user:
-                            st.session_state["aktif_hesap"] = user[3] # 3. index hesap_no
+                            st.session_state["aktif_hesap"] = user[3]
                             st.session_state["page"] = "dashboard"
                             show_msg("Giriş başarılı! Hoş geldiniz.", "success")
                             st.rerun()
@@ -211,7 +209,7 @@ def register_page():
     _, col, _ = st.columns([1, 2, 1])
     
     with col:
-        st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>📝 Kayıt Ol</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align: center; margin-bottom: 0;'>Kayıt Ol</h1>", unsafe_allow_html=True)
         st.markdown("<p style='text-align: center; color: #aaa; margin-bottom: 2rem;'>Saniyeler içinde yeni bir hesap açın.</p>", unsafe_allow_html=True)
         
         with st.form("register_form"):
@@ -239,7 +237,6 @@ def register_page():
 def dashboard_page():
     aktif_hesap = st.session_state.get("aktif_hesap")
     
-    # Güvenlik kontrolü
     if not aktif_hesap:
         change_page("login")
         st.rerun()
@@ -251,28 +248,25 @@ def dashboard_page():
         st.error(f"Veriler alınırken hata: {str(e)}")
         st.stop()
     
-    # Üst Bilgi (Header) Alanı
     header_col1, header_col2 = st.columns([3, 1])
     with header_col1:
         st.markdown(f"<h2>Hoş Geldiniz, <span style='color:#00d2ff'>{user[1]} {user[2]}</span></h2>", unsafe_allow_html=True)
     with header_col2:
         st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
-        st.button("🚪 Çıkış Yap", on_click=logout, type="primary")
+        st.button("Çıkış Yap", on_click=logout, type="primary")
         
     st.divider()
     display_messages()
         
-    # Bakiye Gösterimi
     st.markdown("<p style='text-align: center; font-size: 1.4rem; margin-top: 1rem; color: #ccc;'>Güncel Bakiyeniz</p>", unsafe_allow_html=True)
     st.markdown(f"<p class='metric-value'>{bakiye:,.2f} TL</p>", unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # İşlemler (Tablar)
-    tab1, tab2, tab3, tab4 = st.tabs(["💰 Para Yatır", "💵 Para Çek", "💸 Havale/EFT", "📊 Kredi Hesapla"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Para Yatır", "Para Çek", "Havale/EFT", "Kredi İşlemleri"])
     
     with tab1:
-        st.markdown("### 📥 Hesabınıza Para Ekleyin")
+        st.markdown("### Hesabınıza Para Ekleyin")
         _, form_col, _ = st.columns([1, 4, 1])
         with form_col:
             with st.form("deposit_form", clear_on_submit=True):
@@ -288,7 +282,7 @@ def dashboard_page():
                         st.error(f"İşlem sırasında bir hata oluştu: {str(e)}")
 
     with tab2:
-        st.markdown("### 📤 Hesabınızdan Para Çekin")
+        st.markdown("### Hesabınızdan Para Çekin")
         _, form_col, _ = st.columns([1, 4, 1])
         with form_col:
             with st.form("withdraw_form", clear_on_submit=True):
@@ -302,12 +296,12 @@ def dashboard_page():
                             show_msg(f"{miktar_cek:,.2f} TL başarıyla çekildi!", "success")
                             st.rerun()
                         else:
-                            st.error("❌ Yetersiz bakiye! İşlem gerçekleştirilemedi.")
+                            st.error("Yetersiz bakiye! İşlem gerçekleştirilemedi.")
                     except Exception as e:
                         st.error(f"Veritabanı hatası: {str(e)}")
 
     with tab3:
-        st.markdown("### 🔄 Başka Bir Hesaba Para Transferi")
+        st.markdown("### Başka Bir Hesaba Para Transferi")
         _, form_col, _ = st.columns([1, 4, 1])
         with form_col:
             with st.form("transfer_form", clear_on_submit=True):
@@ -339,20 +333,27 @@ def dashboard_page():
                                     show_msg(f"Transfer Başarılı! Kesilen komisyon: {komisyon:,.2f} TL", "success")
                                     st.rerun()
                                 else:
-                                    st.error(f"❌ Yetersiz bakiye! (Gönderim + Komisyon için gerekli tutar: {toplam_gerekli:,.2f} TL)")
+                                    st.error(f"Yetersiz bakiye! (Gönderim + Komisyon için gerekli tutar: {toplam_gerekli:,.2f} TL)")
                         except Exception as e:
                             st.error(f"Transfer sırasında hata oluştu: {str(e)}")
 
     with tab4:
-        st.markdown("### 📈 İhtiyaç Kredisi Hesaplama Modülü")
+        st.markdown("### İhtiyaç Kredisi Hesaplama Modülü")
         _, form_col, _ = st.columns([1, 4, 1])
         with form_col:
-            with st.form("loan_form"):
+            with st.form("loan_form", clear_on_submit=False):
                 ana_para = st.number_input("Kredi Tutarı (Ana Para - TL)", min_value=1000.0, step=1000.0, format="%.2f")
                 vade = st.number_input("Vade Süresi (Ay)", min_value=1, max_value=120, step=12)
                 
-                if st.form_submit_button("Hesapla"):
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    hesapla_btn = st.form_submit_button("Hesapla")
+                with col_btn2:
+                    cek_btn = st.form_submit_button("Krediyi Hesabıma Yatır")
+                
+                if hesapla_btn or cek_btn:
                     toplam_odeme, aylik_taksit = hesap.faizhesap(ana_para, vade)
+                    
                     st.markdown(f"""
                         <div style="background-color:rgba(0,0,0,0.3); padding: 20px; border-radius: 12px; margin-top:10px;">
                             <h4 style="color:#00d2ff; text-align:center; margin-bottom:15px;">Ödeme Planı Özeti</h4>
@@ -363,6 +364,16 @@ def dashboard_page():
                             <p style="font-size: 1.2rem;"><b>Toplam Geri Ödeme:</b> <span style="color:#EF4444">{toplam_odeme:,.2f} TL</span></p>
                         </div>
                     """, unsafe_allow_html=True)
+                
+                if cek_btn:
+                    try:
+                        mevcut = db.paracekv(aktif_hesap)
+                        db.moneyreset(aktif_hesap, mevcut + ana_para)
+                        db.logtut(aktif_hesap, "Kredi Çekimi", ana_para)
+                        show_msg(f"{ana_para:,.2f} TL tutarındaki kredi hesabınıza yatırıldı!", "success")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Kredi işlemi sırasında hata: {str(e)}")
 
 
 # --- Ana Akış (Routing) Yönlendiricisi ---
