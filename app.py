@@ -205,7 +205,7 @@ def register_page():
                         st.success(f"Kayıt Başarılı! Hesap Numaranız: **{yeni_hesap_no}**")
                         st.info("Lütfen hesap numaranızı not alıp giriş sayfasına ilerleyin.")
                     except Exception as e:
-                        st.error("Kayıt sırasında beklenmedik bir hata oluştu.")
+                        st.error(f"Kayıt sırasında beklenmedik bir hata oluştu: {str(e)}")
         
         st.markdown("<br>", unsafe_allow_html=True)
         st.button("Zaten hesabın var mı? Giriş Yap", on_click=change_page, args=("login",))
