@@ -121,9 +121,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- Veritabanı ve Hesaplamalar Sınıfı (Önbellekleme) ---
-# check_same_thread=False ile Streamlit thread problemlerini önlüyoruz
-@st.cache_resource
+# --- Veritabanı ve Hesaplamalar Sınıfı ---
+# Veritabanını önbelleklemiyoruz ki her thread (kullanıcı) kendi bağlantısını açsın
 def get_db():
     return Veritabani()
 
