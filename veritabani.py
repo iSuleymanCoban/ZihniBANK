@@ -4,7 +4,7 @@ import random
 class Veritabani:
     
     def __init__(self):
-        self.baglanti = sqlite3.connect("banka.db")
+        self.baglanti = sqlite3.connect("banka.db", check_same_thread=False)
         self.imlec = self.baglanti.cursor()
         self.kurtablo()
 
